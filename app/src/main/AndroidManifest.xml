@@ -1,5 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+ 
+    <queries>
+        <package android:name="com.yandex.yango" />
+        <package android:name="sinet.startup.inDriver" />
+        <package android:name="com.heetch" />
+        <package android:name="com.tedmob.coopetaxi" />
+        <package android:name="com.vambzar.app" />
+        <package android:name="com.kubinga.passenger" />
+        <package android:name="ua.com.ontaxi.client" />
+        <package android:name="com.yatechnologies.yassir_rider" />
+        <package android:name="com.moveit.app.customer" />
+    </queries>
+ 
     <application
         android:label="TaxiHub"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
