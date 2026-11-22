@@ -8,9 +8,6 @@
         <package android:name="com.tedmob.coopetaxi" />
         <package android:name="com.vambzar.app" />
         <package android:name="com.kubinga.passenger" />
-        <package android:name="ua.com.ontaxi.client" />
-        <package android:name="com.yatechnologies.yassir_rider" />
-        <package android:name="com.moveit.app.customer" />
     </queries>
  
     <application

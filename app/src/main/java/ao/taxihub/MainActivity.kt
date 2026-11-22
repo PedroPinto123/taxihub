@@ -33,12 +33,9 @@ val taxiApps = listOf(
     TaxiApp("Yango", "com.yandex.yango"),
     TaxiApp("inDrive", "sinet.startup.inDriver"),
     TaxiApp("Heetch", "com.heetch"),
-    TaxiApp("Coopetaxi", "com.tedmob.coopetaxi"),
-    TaxiApp("Vambzar", "com.vambzar.app"),
-    TaxiApp("Kubinga", "com.kubinga.passenger"),
-    TaxiApp("OnTaxi", "ua.com.ontaxi.client"),
-    TaxiApp("Yassir", "com.yatechnologies.yassir_rider"),
-    TaxiApp("Move It", "com.moveit.app.customer")
+    TaxiApp("UGO", "com.tedmob.coopetaxi"),
+    TaxiApp("Vambazar", "com.vambzar.app"),
+    TaxiApp("Kubinga", "com.kubinga.passenger")
 )
  
 class MainActivity : ComponentActivity() {
