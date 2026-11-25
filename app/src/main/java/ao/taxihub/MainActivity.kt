@@ -63,7 +63,7 @@ fun TaxiListScreen(refresh: Int) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text("TaxiHub", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        Text("Táxi Ágil", fontSize = 28.sp, fontWeight = FontWeight.Bold)
         Text("Todos os teus táxis num só sítio")
         Spacer(Modifier.height(16.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -154,3 +154,4 @@ fun openTaxi(context: Context, taxi: TaxiApp) {
         }
     }
 }
+
