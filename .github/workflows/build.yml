@@ -20,7 +20,17 @@ jobs:
         with:
           gradle-version: 8.9
  
+      - name: Preparar chave de assinatura
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/taxiagil-chave.jks"
+ 
       - name: Compilar
+        env:
+          KEYSTORE_PATH: ${{ runner.temp }}/taxiagil-chave.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: gradle assembleDebug
  
       - uses: actions/upload-artifact@v4
