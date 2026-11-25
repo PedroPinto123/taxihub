@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -14,19 +15,26 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
 import androidx.core.graphics.drawable.toBitmap
+ 
+val Yellow = Color(0xFFFFC107)
+val Ink = Color(0xFF1A1A1A)
+val Paper = Color(0xFFFFFBF0)
  
 data class TaxiApp(val name: String, val packageName: String)
  
@@ -61,8 +69,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme {
-                TaxiListScreen(refresh)
+            TaxiAgilTheme {
+                TaxiAgilApp(refresh)
             }
         }
     }
@@ -74,10 +82,28 @@ class MainActivity : ComponentActivity() {
 }
  
 @Composable
-fun TaxiListScreen(refresh: Int) {
+fun TaxiAgilTheme(content: @Composable () -> Unit) {
+    val colors = lightColorScheme(
+        primary = Ink,
+        onPrimary = Yellow,
+        primaryContainer = Yellow,
+        onPrimaryContainer = Ink,
+        secondaryContainer = Yellow,
+        onSecondaryContainer = Ink,
+        background = Paper,
+        onBackground = Ink,
+        surface = Color.White,
+        onSurface = Ink
+    )
+    MaterialTheme(colorScheme = colors, content = content)
+}
+ 
+@Composable
+fun TaxiAgilApp(refresh: Int) {
     val context = LocalContext.current
     val prefs = remember { TaxiPrefs(context) }
     var changes by remember { mutableIntStateOf(0) }
+    var tab by remember { mutableIntStateOf(0) }
  
     val installedCount = remember(refresh) {
         taxiApps.count { isInstalled(context, it.packageName) }
@@ -85,37 +111,150 @@ fun TaxiListScreen(refresh: Int) {
     val sorted = remember(refresh, changes) {
         taxiApps.sortedByDescending { prefs.isFavorite(it.packageName) }
     }
+    val favorites = remember(refresh, changes) {
+        taxiApps.filter { prefs.isFavorite(it.packageName) }
+    }
+    val onChanged: () -> Unit = { changes++ }
  
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Text("Táxi Ágil", fontSize = 28.sp, fontWeight = FontWeight.Bold)
-        Text("Todos os teus táxis num só sítio")
-        Spacer(Modifier.height(12.dp))
-        SummaryCard(installedCount, taxiApps.size)
-        Spacer(Modifier.height(12.dp))
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            items(sorted, key = { it.packageName }) { taxi ->
-                TaxiCard(
-                    taxi = taxi,
-                    refresh = refresh,
-                    favorite = prefs.isFavorite(taxi.packageName),
-                    opens = prefs.opens(taxi.packageName),
-                    onToggleFavorite = {
-                        prefs.setFavorite(taxi.packageName, !prefs.isFavorite(taxi.packageName))
-                        changes++
-                    },
-                    onOpen = {
-                        if (isInstalled(context, taxi.packageName)) {
-                            prefs.addOpen(taxi.packageName)
-                            changes++
-                        }
-                        openTaxi(context, taxi)
-                    }
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        bottomBar = {
+            NavigationBar(containerColor = Color.White) {
+                NavigationBarItem(
+                    selected = tab == 0,
+                    onClick = { tab = 0 },
+                    icon = { Text("\uD83D\uDE95", fontSize = 22.sp) },
+                    label = { Text("Início") }
+                )
+                NavigationBarItem(
+                    selected = tab == 1,
+                    onClick = { tab = 1 },
+                    icon = { Text("★", fontSize = 22.sp) },
+                    label = { Text("Favoritos") }
+                )
+                NavigationBarItem(
+                    selected = tab == 2,
+                    onClick = { tab = 2 },
+                    icon = { Text("•••", fontSize = 18.sp) },
+                    label = { Text("Mais") }
                 )
             }
+        }
+    ) { innerPadding ->
+        Crossfade(
+            targetState = tab,
+            modifier = Modifier.padding(innerPadding),
+            label = "separadores"
+        ) { current ->
+            when (current) {
+                0 -> HomeTab(installedCount, sorted, prefs, refresh, onChanged)
+                1 -> FavoritesTab(favorites, prefs, refresh, onChanged)
+                else -> MoreTab()
+            }
+        }
+    }
+}
+ 
+@Composable
+fun HomeTab(
+    installed: Int,
+    taxis: List<TaxiApp>,
+    prefs: TaxiPrefs,
+    refresh: Int,
+    onChanged: () -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        item { Header() }
+        item { SummaryCard(installed, taxiApps.size) }
+        items(taxis, key = { it.packageName }) { taxi ->
+            TaxiRow(taxi, prefs, refresh, onChanged)
+        }
+    }
+}
+ 
+@Composable
+fun FavoritesTab(
+    favorites: List<TaxiApp>,
+    prefs: TaxiPrefs,
+    refresh: Int,
+    onChanged: () -> Unit
+) {
+    if (favorites.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Ainda não tens favoritos", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "No separador Início, toca na estrela dos táxis que mais usas.",
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            item { Text("Os teus favoritos", fontSize = 24.sp, fontWeight = FontWeight.Bold) }
+            items(favorites, key = { it.packageName }) { taxi ->
+                TaxiRow(taxi, prefs, refresh, onChanged)
+            }
+        }
+    }
+}
+ 
+@Composable
+fun MoreTab() {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        item { Header() }
+        item {
+            InfoCard(
+                "Sobre",
+                "O Táxi Ágil junta as apps de táxi de Angola num só sítio. Toca num táxi para o abrir, ou para o instalar se ainda não o tens."
+            )
+        }
+        item {
+            InfoCard(
+                "Dica",
+                "Toca na estrela para fixar os teus táxis preferidos. Eles sobem para o topo e aparecem no separador Favoritos."
+            )
+        }
+        item {
+            InfoCard(
+                "Em breve",
+                "Localização, conta pessoal e a opinião de outros utilizadores sobre qual app responde mais depressa na tua zona."
+            )
+        }
+        item { Text("Versão 1.1", modifier = Modifier.padding(top = 8.dp)) }
+    }
+}
+ 
+@Composable
+fun Header() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(Ink)
+            .padding(20.dp)
+    ) {
+        Column {
+            Text("Táxi Ágil", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = Yellow)
+            Text("Todos os teus táxis num só sítio", color = Color.White)
         }
     }
 }
@@ -123,23 +262,73 @@ fun TaxiListScreen(refresh: Int) {
 @Composable
 fun SummaryCard(installed: Int, total: Int) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Yellow),
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 installed.toString() + " de " + total.toString() + " apps instaladas",
                 fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                color = Ink
             )
+            Spacer(Modifier.height(8.dp))
+            LinearProgressIndicator(
+                progress = { if (total == 0) 0f else installed.toFloat() / total.toFloat() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp)),
+                color = Ink,
+                trackColor = Color(0x33000000)
+            )
+            Spacer(Modifier.height(8.dp))
             Text(
                 if (installed == total) "Tens todos os táxis à mão."
-                else "Toca nas que faltam para as instalares."
+                else "Toca nas que faltam para as instalares.",
+                color = Ink
             )
         }
     }
+}
+ 
+@Composable
+fun InfoCard(title: String, text: String) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(title, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(4.dp))
+            Text(text)
+        }
+    }
+}
+ 
+@Composable
+fun TaxiRow(taxi: TaxiApp, prefs: TaxiPrefs, refresh: Int, onChanged: () -> Unit) {
+    val context = LocalContext.current
+    TaxiCard(
+        taxi = taxi,
+        refresh = refresh,
+        favorite = prefs.isFavorite(taxi.packageName),
+        opens = prefs.opens(taxi.packageName),
+        onToggleFavorite = {
+            prefs.setFavorite(taxi.packageName, !prefs.isFavorite(taxi.packageName))
+            onChanged()
+        },
+        onOpen = {
+            if (isInstalled(context, taxi.packageName)) {
+                prefs.addOpen(taxi.packageName)
+                onChanged()
+            }
+            openTaxi(context, taxi)
+        }
+    )
 }
  
 @Composable
@@ -156,6 +345,9 @@ fun TaxiCard(
     val installed = icon != null
  
     Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onOpen() }
@@ -177,13 +369,14 @@ fun TaxiCard(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
+                        .background(Yellow),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         taxi.name.take(1),
                         fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = Ink
                     )
                 }
             }
@@ -193,22 +386,31 @@ fun TaxiCard(
                 Text(
                     if (!installed) "Não instalada"
                     else if (opens == 0) "Instalada"
-                    else "Instalada · aberta " + opens.toString() + (if (opens == 1) " vez" else " vezes")
+                    else "Aberta " + opens.toString() + (if (opens == 1) " vez" else " vezes"),
+                    fontSize = 14.sp,
+                    color = Color(0xFF666666)
                 )
             }
             Text(
                 if (favorite) "★" else "☆",
                 fontSize = 28.sp,
-                color = MaterialTheme.colorScheme.primary,
+                color = if (favorite) Color(0xFFF9A825) else Color(0xFF9E9E9E),
                 modifier = Modifier
                     .clickable { onToggleFavorite() }
                     .padding(8.dp)
             )
-            Text(
-                if (installed) "Abrir" else "Instalar",
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold
-            )
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(if (installed) Ink else Yellow)
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    if (installed) "Abrir" else "Instalar",
+                    color = if (installed) Yellow else Ink,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
