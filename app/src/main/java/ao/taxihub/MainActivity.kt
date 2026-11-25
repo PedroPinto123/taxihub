@@ -31,6 +31,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
 import androidx.core.graphics.drawable.toBitmap
+import java.net.HttpURLConnection
+import java.net.URL
+import org.json.JSONObject
  
 val Yellow = Color(0xFFFFC107)
 val Ink = Color(0xFF1A1A1A)
@@ -38,7 +41,7 @@ val Paper = Color(0xFFFFFBF0)
  
 data class TaxiApp(val name: String, val packageName: String)
  
-val taxiApps = listOf(
+val defaultTaxiApps: List<TaxiApp> = listOf(
     TaxiApp("Yango", "com.yandex.yango"),
     TaxiApp("inDrive", "sinet.startup.inDriver"),
     TaxiApp("Heetch", "com.heetch"),
@@ -61,16 +64,43 @@ class TaxiPrefs(context: Context) {
     fun addOpen(pkg: String) {
         prefs.edit { putInt("opens_" + pkg, opens(pkg) + 1) }
     }
+ 
+    fun cachedJson(): String? = prefs.getString("taxis_json", null)
+ 
+    fun saveJson(json: String) {
+        prefs.edit { putString("taxis_json", json) }
+    }
+}
+ 
+const val REMOTE_URL = "https://raw.githubusercontent.com/PedroPinto123/taxihub/main/taxis.json"
+ 
+fun parseTaxis(json: String): List<TaxiApp> {
+    val result = mutableListOf<TaxiApp>()
+    val array = JSONObject(json).getJSONArray("taxis")
+    for (i in 0 until array.length()) {
+        val item = array.getJSONObject(i)
+        val name = item.getString("nome")
+        val pkg = item.getString("pacote")
+        if (name.isNotBlank() && pkg.isNotBlank()) {
+            result.add(TaxiApp(name, pkg))
+        }
+    }
+    return result
 }
  
 class MainActivity : ComponentActivity() {
     private var refresh by mutableIntStateOf(0)
+    private var taxis by mutableStateOf(defaultTaxiApps)
+    private lateinit var prefs: TaxiPrefs
  
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        prefs = TaxiPrefs(this)
+        loadCachedList()
+        fetchRemoteList()
         setContent {
             TaxiAgilTheme {
-                TaxiAgilApp(refresh)
+                TaxiAgilApp(refresh, taxis)
             }
         }
     }
@@ -78,6 +108,36 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         refresh++
+    }
+ 
+    private fun loadCachedList() {
+        val cached = prefs.cachedJson() ?: return
+        try {
+            val parsed = parseTaxis(cached)
+            if (parsed.isNotEmpty()) {
+                taxis = parsed
+            }
+        } catch (e: Exception) {
+            // lista guardada invalida: fica a lista de origem
+        }
+    }
+ 
+    private fun fetchRemoteList() {
+        Thread {
+            try {
+                val conn = URL(REMOTE_URL).openConnection() as HttpURLConnection
+                conn.connectTimeout = 8000
+                conn.readTimeout = 8000
+                val text = conn.inputStream.bufferedReader().use { it.readText() }
+                val parsed = parseTaxis(text)
+                if (parsed.isNotEmpty()) {
+                    prefs.saveJson(text)
+                    runOnUiThread { taxis = parsed }
+                }
+            } catch (e: Exception) {
+                // sem internet ou ficheiro invalido: fica a lista que ja la estava
+            }
+        }.start()
     }
 }
  
@@ -99,20 +159,20 @@ fun TaxiAgilTheme(content: @Composable () -> Unit) {
 }
  
 @Composable
-fun TaxiAgilApp(refresh: Int) {
+fun TaxiAgilApp(refresh: Int, taxis: List<TaxiApp>) {
     val context = LocalContext.current
     val prefs = remember { TaxiPrefs(context) }
     var changes by remember { mutableIntStateOf(0) }
     var tab by remember { mutableIntStateOf(0) }
  
-    val installedCount = remember(refresh) {
-        taxiApps.count { isInstalled(context, it.packageName) }
+    val installedCount = remember(refresh, taxis) {
+        taxis.count { isInstalled(context, it.packageName) }
     }
-    val sorted = remember(refresh, changes) {
-        taxiApps.sortedByDescending { prefs.isFavorite(it.packageName) }
+    val sorted = remember(refresh, changes, taxis) {
+        taxis.sortedByDescending { prefs.isFavorite(it.packageName) }
     }
-    val favorites = remember(refresh, changes) {
-        taxiApps.filter { prefs.isFavorite(it.packageName) }
+    val favorites = remember(refresh, changes, taxis) {
+        taxis.filter { prefs.isFavorite(it.packageName) }
     }
     val onChanged: () -> Unit = { changes++ }
  
@@ -147,7 +207,7 @@ fun TaxiAgilApp(refresh: Int) {
             label = "separadores"
         ) { current ->
             when (current) {
-                0 -> HomeTab(installedCount, sorted, prefs, refresh, onChanged)
+                0 -> HomeTab(installedCount, taxis.size, sorted, prefs, refresh, onChanged)
                 1 -> FavoritesTab(favorites, prefs, refresh, onChanged)
                 else -> MoreTab()
             }
@@ -158,6 +218,7 @@ fun TaxiAgilApp(refresh: Int) {
 @Composable
 fun HomeTab(
     installed: Int,
+    total: Int,
     taxis: List<TaxiApp>,
     prefs: TaxiPrefs,
     refresh: Int,
@@ -169,7 +230,7 @@ fun HomeTab(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item { Header() }
-        item { SummaryCard(installed, taxiApps.size) }
+        item { SummaryCard(installed, total) }
         items(taxis, key = { it.packageName }) { taxi ->
             TaxiRow(taxi, prefs, refresh, onChanged)
         }
@@ -239,7 +300,7 @@ fun MoreTab() {
                 "Localização, conta pessoal e a opinião de outros utilizadores sobre qual app responde mais depressa na tua zona."
             )
         }
-        item { Text("Versão 1.1", modifier = Modifier.padding(top = 8.dp)) }
+        item { Text("Versão 1.2", modifier = Modifier.padding(top = 8.dp)) }
     }
 }
  

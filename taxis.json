@@ -1,0 +1,11 @@
+{
+  "versao": 1,
+  "taxis": [
+    { "nome": "Yango", "pacote": "com.yandex.yango" },
+    { "nome": "inDrive", "pacote": "sinet.startup.inDriver" },
+    { "nome": "Heetch", "pacote": "com.heetch" },
+    { "nome": "UGO", "pacote": "com.tedmob.coopetaxi" },
+    { "nome": "Vambazar", "pacote": "com.vambzar.app" },
+    { "nome": "Kubinga", "pacote": "com.kubinga.passenger" }
+  ]
+}
