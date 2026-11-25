@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.edit
 import androidx.core.graphics.drawable.toBitmap
  
 data class TaxiApp(val name: String, val packageName: String)
@@ -37,6 +38,22 @@ val taxiApps = listOf(
     TaxiApp("Vambazar", "com.vambzar.app"),
     TaxiApp("Kubinga", "com.kubinga.passenger")
 )
+ 
+class TaxiPrefs(context: Context) {
+    private val prefs = context.getSharedPreferences("taxiagil", Context.MODE_PRIVATE)
+ 
+    fun isFavorite(pkg: String): Boolean = prefs.getBoolean("fav_" + pkg, false)
+ 
+    fun setFavorite(pkg: String, value: Boolean) {
+        prefs.edit { putBoolean("fav_" + pkg, value) }
+    }
+ 
+    fun opens(pkg: String): Int = prefs.getInt("opens_" + pkg, 0)
+ 
+    fun addOpen(pkg: String) {
+        prefs.edit { putInt("opens_" + pkg, opens(pkg) + 1) }
+    }
+}
  
 class MainActivity : ComponentActivity() {
     private var refresh by mutableIntStateOf(0)
@@ -58,6 +75,17 @@ class MainActivity : ComponentActivity() {
  
 @Composable
 fun TaxiListScreen(refresh: Int) {
+    val context = LocalContext.current
+    val prefs = remember { TaxiPrefs(context) }
+    var changes by remember { mutableIntStateOf(0) }
+ 
+    val installedCount = remember(refresh) {
+        taxiApps.count { isInstalled(context, it.packageName) }
+    }
+    val sorted = remember(refresh, changes) {
+        taxiApps.sortedByDescending { prefs.isFavorite(it.packageName) }
+    }
+ 
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -65,17 +93,64 @@ fun TaxiListScreen(refresh: Int) {
     ) {
         Text("Táxi Ágil", fontSize = 28.sp, fontWeight = FontWeight.Bold)
         Text("Todos os teus táxis num só sítio")
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(12.dp))
+        SummaryCard(installedCount, taxiApps.size)
+        Spacer(Modifier.height(12.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            items(taxiApps) { taxi ->
-                TaxiCard(taxi, refresh)
+            items(sorted, key = { it.packageName }) { taxi ->
+                TaxiCard(
+                    taxi = taxi,
+                    refresh = refresh,
+                    favorite = prefs.isFavorite(taxi.packageName),
+                    opens = prefs.opens(taxi.packageName),
+                    onToggleFavorite = {
+                        prefs.setFavorite(taxi.packageName, !prefs.isFavorite(taxi.packageName))
+                        changes++
+                    },
+                    onOpen = {
+                        if (isInstalled(context, taxi.packageName)) {
+                            prefs.addOpen(taxi.packageName)
+                            changes++
+                        }
+                        openTaxi(context, taxi)
+                    }
+                )
             }
         }
     }
 }
  
 @Composable
-fun TaxiCard(taxi: TaxiApp, refresh: Int) {
+fun SummaryCard(installed: Int, total: Int) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                installed.toString() + " de " + total.toString() + " apps instaladas",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                if (installed == total) "Tens todos os táxis à mão."
+                else "Toca nas que faltam para as instalares."
+            )
+        }
+    }
+}
+ 
+@Composable
+fun TaxiCard(
+    taxi: TaxiApp,
+    refresh: Int,
+    favorite: Boolean,
+    opens: Int,
+    onToggleFavorite: () -> Unit,
+    onOpen: () -> Unit
+) {
     val context = LocalContext.current
     val icon = remember(refresh) { loadIcon(context, taxi.packageName) }
     val installed = icon != null
@@ -83,7 +158,7 @@ fun TaxiCard(taxi: TaxiApp, refresh: Int) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { openTaxi(context, taxi) }
+            .clickable { onOpen() }
     ) {
         Row(
             modifier = Modifier.padding(14.dp),
@@ -115,14 +190,35 @@ fun TaxiCard(taxi: TaxiApp, refresh: Int) {
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(taxi.name, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                Text(if (installed) "Instalada" else "Não instalada")
+                Text(
+                    if (!installed) "Não instalada"
+                    else if (opens == 0) "Instalada"
+                    else "Instalada · aberta " + opens.toString() + (if (opens == 1) " vez" else " vezes")
+                )
             }
+            Text(
+                if (favorite) "★" else "☆",
+                fontSize = 28.sp,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .clickable { onToggleFavorite() }
+                    .padding(8.dp)
+            )
             Text(
                 if (installed) "Abrir" else "Instalar",
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold
             )
         }
+    }
+}
+ 
+fun isInstalled(context: Context, pkg: String): Boolean {
+    return try {
+        context.packageManager.getApplicationInfo(pkg, 0)
+        true
+    } catch (e: PackageManager.NameNotFoundException) {
+        false
     }
 }
  
@@ -154,4 +250,3 @@ fun openTaxi(context: Context, taxi: TaxiApp) {
         }
     }
 }
-
