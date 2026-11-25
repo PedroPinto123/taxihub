@@ -6,6 +6,6 @@
     { "nome": "Heetch", "pacote": "com.heetch" },
     { "nome": "UGO", "pacote": "com.tedmob.coopetaxi" },
     { "nome": "Vambazar", "pacote": "com.vambzar.app" },
-    { "nome": "Kubinga", "pacote": "com.kubinga.passenger" }
+    { "nome": "Kubinga teste", "pacote": "com.kubinga.passenger" }
   ]
 }
