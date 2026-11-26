@@ -4,8 +4,8 @@
     { "nome": "Yango", "pacote": "com.yandex.yango" },
     { "nome": "inDrive", "pacote": "sinet.startup.inDriver" },
     { "nome": "Heetch", "pacote": "com.heetch" },
-    { "nome": "UGO GO", "pacote": "com.tedmob.coopetaxi" },
+    { "nome": "UGO", "pacote": "com.tedmob.coopetaxi" },
     { "nome": "Vambazar", "pacote": "com.vambzar.app" },
-    { "nome": "Kubinga teste", "pacote": "com.kubinga.passenger" }
+    { "nome": "Kubinga", "pacote": "com.kubinga.passenger" }
   ]
 }
