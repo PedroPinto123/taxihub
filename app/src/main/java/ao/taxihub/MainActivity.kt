@@ -230,6 +230,7 @@ fun HomeTab(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item { Header() }
+        item { ZoneCard() }
         item { SummaryCard(installed, total) }
         items(taxis, key = { it.packageName }) { taxi ->
             TaxiRow(taxi, prefs, refresh, onChanged)
