@@ -13,11 +13,10 @@ import android.os.Looper
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -67,43 +66,33 @@ fun ZoneCard() {
         }
     }
  
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("\uD83D\uDCCD A tua zona", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(6.dp))
-            val currentZone = zone
-            if (currentZone != null) {
-                Text(currentZone, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "A app não guarda nem envia a tua localização.",
-                    fontSize = 13.sp,
-                    color = Color(0xFF666666)
-                )
-            } else if (loading) {
-                Text("A procurar a tua zona...")
-            } else {
-                Text(message)
-                Spacer(Modifier.height(10.dp))
-                Button(
-                    onClick = {
-                        if (hasPermission) {
-                            start()
-                        } else {
-                            launcher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Ink,
-                        contentColor = Yellow
-                    )
-                ) {
-                    Text("Mostrar a minha zona", fontWeight = FontWeight.Bold)
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AppIcon(LineIcon.Pin, Muted, iconSize = 16.dp)
+            Spacer(Modifier.width(4.dp))
+            Text("A tua zona", fontSize = 13.sp, color = Muted)
+        }
+        Spacer(Modifier.height(4.dp))
+        val currentZone = zone
+        if (currentZone != null) {
+            val isName = !currentZone.startsWith("Lat")
+            Text(
+                currentZone,
+                fontSize = if (isName) 28.sp else 16.sp,
+                lineHeight = if (isName) 32.sp else 20.sp,
+                fontWeight = FontWeight.Medium,
+                color = Ink
+            )
+        } else if (loading) {
+            Text("A procurar a tua zona", fontSize = 16.sp, color = Secondary)
+        } else {
+            Text(message, fontSize = 14.sp, lineHeight = 20.sp, color = Secondary)
+            Spacer(Modifier.height(12.dp))
+            QuietButton("Mostrar a minha zona") {
+                if (hasPermission) {
+                    start()
+                } else {
+                    launcher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
                 }
             }
         }

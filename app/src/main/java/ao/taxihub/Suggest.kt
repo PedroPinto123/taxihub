@@ -5,11 +5,9 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -18,29 +16,19 @@ import androidx.compose.ui.unit.sp
 const val SUGGESTION_EMAIL = "taxiagil.sugestoes@gmail.com"
  
 @Composable
-fun SuggestCard() {
+fun SuggestBlock() {
     val context = LocalContext.current
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("Conheces outro táxi?", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(4.dp))
-            Text("Sugere uma app de táxi que funcione em Angola e nós vemos se a acrescentamos.")
-            Spacer(Modifier.height(10.dp))
-            Button(
-                onClick = { suggestTaxi(context) },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Ink,
-                    contentColor = Yellow
-                )
-            ) {
-                Text("Sugerir um táxi", fontWeight = FontWeight.Bold)
-            }
-        }
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text("Conheces outro táxi?", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Ink)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Sugere uma app de táxi que funcione em Angola e nós vemos se a acrescentamos.",
+            fontSize = 14.sp,
+            lineHeight = 20.sp,
+            color = Secondary
+        )
+        Spacer(Modifier.height(12.dp))
+        QuietButton("Sugerir um táxi") { suggestTaxi(context) }
     }
 }
  
