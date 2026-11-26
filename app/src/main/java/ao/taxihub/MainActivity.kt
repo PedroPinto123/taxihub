@@ -81,7 +81,8 @@ fun parseTaxis(json: String): List<TaxiApp> {
         val item = array.getJSONObject(i)
         val name = item.getString("nome")
         val pkg = item.getString("pacote")
-        if (name.isNotBlank() && pkg.isNotBlank()) {
+        val active = item.optBoolean("ativo", true)
+        if (active && name.isNotBlank() && pkg.isNotBlank()) {
             result.add(TaxiApp(name, pkg))
         }
     }
@@ -301,7 +302,8 @@ fun MoreTab() {
                 "Localização, conta pessoal e a opinião de outros utilizadores sobre qual app responde mais depressa na tua zona."
             )
         }
-        item { Text("Versão 1.2", modifier = Modifier.padding(top = 8.dp)) }
+        item { SuggestCard() }
+        item { Text("Versão 1.3", modifier = Modifier.padding(top = 8.dp)) }
     }
 }
  
